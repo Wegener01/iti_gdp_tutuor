@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mein 2D Spiel - GUI</title>
+    <!-- Tailwind CSS für einfaches Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Angepasste Stile, die nicht direkt in Tailwind sind oder überschrieben werden müssen */
+        body {
+            font-family: 'Inter', sans-serif; /* Standard-Schriftart */
+            overflow: hidden; /* Verhindert Scrollbalken */
+        }
+
+        #game-container {
+            /* Zentrierung des Spielbereichs */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a1a2e; /* Dunkler Hintergrund */
+        }
+
+        #game-area {
+            position: relative;
+            background-color: #0f0f2b; /* Spielhintergrund */
+            border: 3px solid #6a0572; /* Lila Rand */
+            box-shadow: 0 0 20px rgba(106, 5, 114, 0.7); /* Leuchtender Schatten */
+            overflow: hidden; /* Stellt sicher, dass Spielobjekte im Bereich bleiben */
+            display: flex; /* Für die GUI-Überlagerung */
+            flex-direction: column;
+            justify-content: space-between; /* Elemente oben und unten verteilen */
+            width: 90vw; /* Breite basierend auf Viewport-Breite */
+            max-width: 1000px; /* Maximale Breite */
+            height: calc(90vw * 0.75); /* 4:3 Seitenverhältnis (oder anpassen) */
+            max-height: 75vh; /* Maximale Höhe */
+            border-radius: 12px; /* Abgerundete Ecken */
+        }
+
+        @media (orientation: portrait) {
+            #game-area {
+                width: 95vw;
+                height: calc(95vw * 0.75); /* Anpassen für Hochformat */
+            }
+        }
+
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block; /* Entfernt zusätzlichen Platz unter dem Canvas */
+            z-index: 1; /* Unter der GUI-Überlagerung */
+        }
+
+        /* GUI-Elemente */
+        #gui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Ermöglicht das Durchklicken auf das Canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1rem; /* Padding innerhalb des Overlays */
+            z-index: 2; /* Über dem Canvas */
+        }
+
+        .gui-bar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .gui-item {
+            background-color: rgba(0, 0, 0, 0.6); /* Transparenter dunkler Hintergrund */
+            backdrop-filter: blur(5px); /* Leichter Blur-Effekt */
+            padding: 0.5rem 1rem;
+            border-radius: 8px; /* Abgerundete Ecken */
+            border: 1px solid rgba(106, 5, 114, 0.5);
+            color: #e0e0e0; /* Helle Textfarbe */
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* Abstand zwischen Icon und Text */
+            pointer-events: auto; /* Mausinteraktionen wieder aktivieren */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .gui-item img {
+            height: 24px; /* Icon-Größe */
+            width: 24px;
+            object-fit: contain;
+        }
+
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(15, 15, 43, 0.95); /* Dunkler, leicht transparenter Hintergrund */
+            border: 3px solid #ff007f; /* Magenta-Rand */
+            padding: 2.5rem;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.6rem;
+            color: #fff;
+            box-shadow: 0 0 30px rgba(255, 0, 127, 0.8);
+            display: none; /* Standardmäßig versteckt */
+            pointer-events: auto;
+            z-index: 10; /* Stellt sicher, dass es über allem liegt */
+            max-width: 90%; /* Responsive Breite */
+        }
+
+        #message-box p {
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
+        }
+
+        #message-box button {
+            background-color: #ff007f; /* Magenta-Button */
+            color: white;
+            border: none;
+            padding: 0.8rem 1.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        #message-box button:hover {
+            background-color: #d1006a; /* Dunkleres Magenta beim Hover */
+            transform: translateY(-2px); /* Leichter Hoch-Effekt */
+        }
+
+        #message-box button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            pointer-events: auto;
+            display: flex;
+            gap: 10px; /* Abstand zwischen Buttons */
+            z-index: 5;
+        }
+
+        .control-button {
+            background-color: rgba(40, 40, 80, 0.7); /* Dunkler, leicht transparenter Hintergrund */
+            color: #e0e0e0;
+            border: 1px solid #6a0572;
+            padding: 0.7rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-button:hover {
+            background-color: rgba(60, 60, 100, 0.9);
+            transform: translateY(-1px);
+        }
+
+        .control-button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Inventar-Grid */
+        #inventory {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 Spalten */
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .inventory-slot {
+            width: 60px; /* Feste Größe für Slots */
+            height: 60px;
+            background-color: rgba(30, 30, 60, 0.8);
+            border: 1px solid #4a0352;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #aaa;
+            font-size: 0.8rem;
+            position: relative;
+        }
+
+        .inventory-slot img {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+        }
+
+        .item-count {
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+
+    <div id="game-container" class="relative w-full h-full flex flex-col items-center justify-center">
+        <div id="game-area" class="relative">
+            <!-- Hier wird dein Spiel-Canvas sein -->
+            <canvas id="game-canvas"></canvas>
+
+            <!-- GUI-Overlay -->
+            <div id="gui-overlay">
+                <!-- Obere Leiste -->
+                <div class="gui-bar">
+                    <div id="score" class="gui-item">
+                        <!-- Platzhalter-Bild für Punkte -->
+                        <img src="https://placehold.co/24x24/FFFF00/000000?text=P" alt="Punkte Icon">
+                        <span>Punkte: <span id="score-value">0</span></span>
+                    </div>
+
+                </div>
+
+                <!-- Untere Leiste (Inventar/Power-ups) -->
+                <div class="gui-bar justify-center">
+                    <div class="gui-item">
+                        <span>Inventar:</span>
+                        <div id="inventory">
+                            <!-- Inventar-Slots werden dynamisch per JS gefüllt -->
+                            <div class="inventory-slot"></div>
+                            <div class="inventory-slot"></div>
+                            <div class="inventory-slot"></div>
+                            <div class="inventory-slot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+            <!-- Nachrichtenbox (z.B. für Game Over, Pause) -->
+            <div id="message-box">
+                <p id="message-text">Willkommen zum Spiel!</p>
+                <button id="message-button">Starten</button>
+            </div>
+
+            <!-- Steuerungselemente -->
+            <div id="controls">
+                <button class="control-button" id="pause-button">Pause</button>
+                <button class="control-button" id="toggle-inventory-button">Inventar umschalten</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreValue = document.getElementById('score-value');
+        const healthValue = document.getElementById('health-value');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const messageButton = document.getElementById('message-button');
+        const pauseButton = document.getElementById('pause-button');
+        const toggleInventoryButton = document.getElementById('toggle-inventory-button');
+        const inventoryContainer = document.getElementById('inventory');
+        const inventorySlots = inventoryContainer.children; // HTMLCollection der Slots
+
+        // Spielzustandsvariablen
+        let score = 0;
+        let health = 100;
+        let gamePaused = true; // Spiel startet im pausierten Zustand
+        let playerX = 0;
+        let playerY = 0;
+
+        // Inventar-Daten
+        const inventory = [
+            null, // Leerer Slot
+            null,
+            null,
+            null  // Leerer Slot
+        ];
+
+        // Funktion zur Anpassung des Canvas an die Containergröße
+        function resizeCanvas() {
+            const gameArea = document.getElementById('game-area');
+            canvas.width = gameArea.clientWidth;
+            canvas.height = gameArea.clientHeight;
+            playerX = canvas.width / 2;
+            playerY = canvas.height / 2;
+            // Neuzeichnen, falls etwas darauf war
+            if (!gamePaused) {
+                drawGame();
+            }
+        }
+
+        // Funktion zum Aktualisieren der GUI-Werte
+        function updateGUI() {
+            scoreValue.textContent = score;
+            healthValue.textContent = health;
+            updateInventoryGUI();
+        }
+
+        // Funktion zum Aktualisieren des Inventars in der GUI
+        function updateInventoryGUI() {
+            for (let i = 0; i < inventorySlots.length; i++) {
+                const slot = inventorySlots[i];
+                const item = inventory[i];
+
+                slot.innerHTML = ''; // Inhalt des Slots leeren
+
+                if (item) {
+                    const img = document.createElement('img');
+                    img.src = item.icon;
+                    img.alt = item.name;
+                    img.classList.add('w-full', 'h-full'); // Tailwind-Klassen für responsive Bilder
+                    slot.appendChild(img);
+
+                    if (item.count > 1) {
+                        const countSpan = document.createElement('span');
+                        countSpan.classList.add('item-count');
+                        countSpan.textContent = item.count;
+                        slot.appendChild(countSpan);
+                    }
+                } else {
+                    slot.textContent = ''; // Oder ein leeres Feld-Symbol
+                }
+            }
+        }
+
+        // Haupt-Spiel-Loop
+        function drawGame() {
+            if (gamePaused) return;
+
+            // Hintergrund löschen
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Beispiel: Spieler zeichnen
+            ctx.fillStyle = 'blue';
+            ctx.beginPath();
+            ctx.arc(playerX, playerY, 25, 0, Math.PI * 2); // Ein Kreis als Spieler
+            ctx.fill();
+
+            // Hier kommt deine Spiellogik und das Zeichnen weiterer Objekte
+            // ...
+
+            requestAnimationFrame(drawGame);
+        }
+
+        // Funktion zum Anzeigen der Nachrichtenbox
+        function showMessageBox(text, buttonText, type = 'start') {
+            messageText.textContent = text;
+            messageButton.textContent = buttonText;
+            messageBox.style.display = 'block';
+            gamePaused = true; // Spiel pausieren, wenn die Box angezeigt wird
+
+            // Event-Listener für den Button anpassen
+            messageButton.onclick = () => {
+                messageBox.style.display = 'none';
+                if (type === 'start') {
+                    score = 0;
+                    health = 100;
+                    updateGUI();
+                    gamePaused = false;
+                    drawGame(); // Spiel starten
+                } else if (type === 'resume') {
+                    gamePaused = false;
+                    drawGame(); // Spiel fortsetzen
+                } else if (type === 'gameover') {
+                    // Logik für Neustart
+                    score = 0;
+                    health = 100;
+                    // Inventar zurücksetzen oder initialisieren
+                    inventory[0] = { id: 'sword', name: 'Schwert', icon: 'https://placehold.co/24x24/00BFFF/FFFFFF?text=S', count: 1 };
+                    inventory[1] = { id: 'potion', name: 'Trank', icon: 'https://placehold.co/24x24/FF00FF/FFFFFF?text=T', count: 3 };
+                    inventory[2] = null;
+                    inventory[3] = null;
+                    updateGUI();
+                    gamePaused = false;
+                    drawGame(); // Spiel neu starten
+                }
+            };
+        }
+
+        // --- GUI Interaktionen ---
+
+        // Beispiel: Spielerbewegung und Interaktion (Punkte sammeln, Schaden nehmen)
+        document.addEventListener('keydown', (e) => {
+            if (gamePaused) return;
+
+            const moveAmount = 10;
+            if (e.key === 'ArrowUp') {
+                playerY = Math.max(0, playerY - moveAmount);
+            } else if (e.key === 'ArrowDown') {
+                playerY = Math.min(canvas.height, playerY + moveAmount);
+            } else if (e.key === 'ArrowLeft') {
+                playerX = Math.max(0, playerX - moveAmount);
+            } else if (e.key === 'ArrowRight') {
+                playerX = Math.min(canvas.width, playerX + moveAmount);
+            } else if (e.key === ' ' || e.key === 'Spacebar') { // Leertaste für Aktion
+                score += 5;
+                updateGUI();
+            } else if (e.key === 'd' || e.key === 'D') { // 'd' für Schaden
+                health -= 10;
+                updateGUI();
+                if (health <= 0) {
+                    showMessageBox("Game Over!", "Neustart", 'gameover');
+                }
+            } else if (e.key === 'h' || e.key === 'H') { // 'h' für Heilung
+                if (inventory[1] && inventory[1].id === 'potion' && inventory[1].count > 0) {
+                    inventory[1].count--;
+                    health = Math.min(100, health + 20); // Max. 100 Gesundheit
+                    updateGUI();
+                } else {
+                    console.log("Keine Tränke mehr!");
+                }
+            }
+            drawGame(); // Neuzeichnen nach Bewegung
+        });
+
+        pauseButton.addEventListener('click', () => {
+            if (!gamePaused) {
+                showMessageBox("Spiel pausiert!", "Fortsetzen", 'resume');
+            } else {
+                // Wenn bereits pausiert, aber die Box vielleicht durch eine andere Nachricht sichtbar ist
+                messageBox.style.display = 'none';
+                gamePaused = false;
+                drawGame();
+            }
+        });
+
+        toggleInventoryButton.addEventListener('click', () => {
+            const guiOverlay = document.getElementById('gui-overlay');
+            const bottomBar = guiOverlay.querySelector('.gui-bar:last-child');
+            if (bottomBar.style.display === 'none') {
+                bottomBar.style.display = 'flex';
+                toggleInventoryButton.textContent = "Inventar ausblenden";
+            } else {
+                bottomBar.style.display = 'none';
+                toggleInventoryButton.textContent = "Inventar anzeigen";
+            }
+        });
+
+
+        // Initialisierung
+        window.addEventListener('resize', resizeCanvas); // Canvas bei Fenstergröße anpassen
+        window.onload = () => {
+            resizeCanvas(); // Erste Anpassung beim Laden
+            updateGUI(); // Erste Aktualisierung der GUI
+            showMessageBox("Willkommen zum Spiel! Drücke STARTEN.", "Starten", 'start');
+        };
+
+    </script>
+
+</body>
+</html>
